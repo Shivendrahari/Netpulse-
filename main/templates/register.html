@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Network Management</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome CDN (Working Link) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .password-strength {
+            height: 5px;
+            width: 100%;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        .strength-weak { background-color: #ff4d4d; }
+        .strength-medium { background-color: #ffcc00; }
+        .strength-strong { background-color: #00e600; }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center h-screen">
+
+    <!-- Form Container -->
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-96 max-w-md space-y-6">
+        
+        <!-- Logo or Network Icon -->
+        <div class="flex justify-center mb-6">
+            <i class="fas fa-network-wired text-6xl text-teal-600"></i>
+        </div>
+
+        <!-- Heading with Icon -->
+        <h2 class="text-3xl font-semibold text-center text-gray-800 flex items-center justify-center">
+            <i class="fas fa-user-plus mr-3 text-teal-600"></i> NetPulse Register
+        </h2>
+        <p class="text-center text-gray-600 text-sm mb-6">Create your account to manage network infrastructure securely.</p>
+
+        <!-- Register Form -->
+        <form method="POST" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Email Input -->
+            <div class="relative">
+                <input type="email" name="email" placeholder="Email Address" class="w-full p-3 pl-10 pr-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" required>
+                <i class="fas fa-envelope absolute left-3 top-3 text-gray-500"></i>
+            </div>
+
+            <!-- Password Input -->
+            <div class="relative">
+                <input type="password" id="password" name="password" placeholder="Password" class="w-full p-3 pl-10 pr-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" required>
+                <i class="fas fa-lock absolute left-3 top-3 text-gray-500"></i>
+            </div>
+
+            <!-- Password Strength Meter -->
+            <div id="passwordStrengthMeter" class="password-strength"></div>
+            <p id="passwordStrengthText" class="text-xs text-gray-600"></p>
+
+            <!-- Re-enter Password Input (Initially Hidden) -->
+            <div id="reEnterPasswordDiv" class="relative hidden">
+                <input type="password" id="confirmPassword" name="confirm_password" placeholder="Re-enter Password" class="w-full p-3 pl-10 pr-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" required>
+                <i class="fas fa-lock absolute left-3 top-3 text-gray-500"></i>
+            </div>
+
+            <!-- Password Match Feedback -->
+            <p id="passwordMatchText" class="text-xs text-gray-600"></p>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-teal-600 text-white p-3 rounded-lg hover:bg-teal-700 transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center">
+                <i class="fas fa-user-plus mr-2"></i> Register
+            </button>
+        </form>
+
+        <!-- Login Link -->
+        <p class="text-center text-sm text-gray-600">Already have an account? <a href="/" class="text-teal-500 hover:text-teal-600">Login</a></p>
+
+        <!-- Footer Note (Optional) -->
+        <p class="text-center text-xs text-gray-500 mt-6">© 2025 Network Manager. All Rights Reserved.</p>
+    </div>
+
+    <!-- Password Strength and Match Logic -->
+    <script>
+        // Function to calculate password strength
+        function calculatePasswordStrength(password) {
+            const strengthMeter = document.getElementById('passwordStrengthMeter');
+            const strengthText = document.getElementById('passwordStrengthText');
+
+            let strength = 0;
+            const strongPasswordRegex = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}/; // Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char
+
+            // Weak Password: Less than 6 characters or does not include both lowercase and uppercase letters
+            if (password.length < 6) {
+                strength = 1; // Weak
+            } 
+            // Medium Password: No special characters, or a mix of lowercase and uppercase but no numbers or special chars
+            else if (password.length < 8) {
+                strength = 2; // Medium
+            }
+            // Strong Password: At least 8 characters, 1 number, 1 uppercase letter, and 1 special char
+            else if (strongPasswordRegex.test(password)) {
+                strength = 3; // Strong
+            }
+
+            // Set password strength color and text
+            switch (strength) {
+                case 1:
+                    strengthMeter.classList.add('strength-weak');
+                    strengthMeter.classList.remove('strength-medium', 'strength-strong');
+                    strengthText.textContent = "Weak Password";
+                    break;
+                case 2:
+                    strengthMeter.classList.add('strength-medium');
+                    strengthMeter.classList.remove('strength-weak', 'strength-strong');
+                    strengthText.textContent = "Medium Password";
+                    break;
+                case 3:
+                    strengthMeter.classList.add('strength-strong');
+                    strengthMeter.classList.remove('strength-weak', 'strength-medium');
+                    strengthText.textContent = "Strong Password";
+                    break;
+                default:
+                    strengthMeter.classList.remove('strength-weak', 'strength-medium', 'strength-strong');
+                    strengthText.textContent = "";
+                    break;
+            }
+        }
+
+        // Function to check if passwords match
+        function checkPasswordMatch() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const matchText = document.getElementById('passwordMatchText');
+            
+            if (password !== confirmPassword) {
+                matchText.textContent = "Passwords do not match!";
+                matchText.classList.add('text-red-500');
+                matchText.classList.remove('text-green-500');
+            } else {
+                matchText.textContent = "Passwords match!";
+                matchText.classList.add('text-green-500');
+                matchText.classList.remove('text-red-500');
+            }
+        }
+
+        // Real-time password strength check
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            calculatePasswordStrength(password);
+
+            // Show the "Re-enter Password" field only after the user starts typing the password
+            const reEnterPasswordDiv = document.getElementById('reEnterPasswordDiv');
+            if (password.length > 0) {
+                reEnterPasswordDiv.classList.remove('hidden');
+            } else {
+                reEnterPasswordDiv.classList.add('hidden');
+            }
+        });
+
+        // Real-time password match check
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            checkPasswordMatch();
+        });
+    </script>
+
+</body>
+</html>

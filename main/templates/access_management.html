@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" x-data="dashboard()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Monitoring - Admin Control Center</title>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+  <!-- AlpineJS for interactivity -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .glow-hover {
+      transition: all 0.3s ease;
+    }
+    .glow-hover:hover {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+    .border-animated {
+      position: relative;
+      overflow: hidden;
+    }
+    .border-animated::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+      animation: slideBorder 3s infinite;
+    }
+    @keyframes slideBorder {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen font-sans antialiased text-gray-900">
+
+  <!-- Navbar -->
+  <nav class="header-gradient text-white shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <i class="fas fa-network-wired text-3xl"></i>
+          <h1 class="text-2xl font-extrabold tracking-tight">NetPulse Admin Panel</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+          <div class="text-sm font-medium">
+            <i class="fas fa-user-shield mr-2"></i>
+            <!-- <span>{{ admin_email }}</span> -->
+          </div>
+          <a href="/" class="glow-hover">Home</a>
+          <a href="/cards" class="glow-hover">Topology & Graph</a>
+          <a href="#" class="glow-hover">Access Management</a>
+          <a href="/notify" class="glow-hover">Notify Me</a>
+          <a href="/uptime" class="glow-hover">Uptime Graph</a>
+          <a href="/logout" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg glow-hover transition flex items-center">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">
+        Admin Control Center
+      </h2>
+      <p class="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+        Manage network access and monitor performance with full administrative control.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="overview">
+    <!-- User Access Management Section -->
+    <section class="mb-12 border-animated" x-data="userAccess()">
+      <div class="bg-white rounded-2xl shadow-lg p-6 glow-hover">
+        <div class="flex items-center space-x-3 mb-6">
+          <i class="fas fa-user-lock text-blue-600 text-2xl"></i>
+          <h3 class="text-3xl font-bold text-gray-900">User Access Management</h3>
+        </div>
+        
+        <!-- User Selection -->
+        <div class="mb-6">
+          <label for="userSelect" class="block text-sm font-medium text-gray-700 mb-2">Select User</label>
+          <select id="userSelect" x-model="selectedUserId" 
+                  @change="fetchUserAccess()"
+                  class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            <option value="">Select a user...</option>
+            <template x-for="user in users" :key="user.id">
+              <option :value="user.id" x-text="`${user.email} (${user.role})`"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- Branch Access Form -->
+        <div x-show="selectedUserId" class="mt-6">
+          <h4 class="text-xl font-semibold text-gray-900 mb-4">Assign Branches</h4>
+          <form @submit.prevent="updateUserAccess">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <template x-for="branch in branches" :key="branch">
+                <div class="flex items-center">
+                  <input type="checkbox" 
+                         :id="`branch-${branch}`" 
+                         :value="branch" 
+                         x-model="selectedBranches" 
+                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                  <label :for="`branch-${branch}`" class="ml-2 text-sm text-gray-700" x-text="branch"></label>
+                </div>
+              </template>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" 
+                      class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg glow-hover flex items-center">
+                <i class="fas fa-save mr-2"></i> Update Access
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Current Access Table -->
+        <div class="mt-8">
+          <h4 class="text-xl font-semibold text-gray-900 mb-4">Current User Access</h4>
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Email</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Role</th>
+                  <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Assigned Branches</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="user in users" :key="user.id">
+                  <tr class="border-t">
+                    <td class="px-6 py-4 text-sm text-gray-900" x-text="user.email"></td>
+                    <td class="px-6 py-4 text-sm text-gray-900" x-text="user.role"></td>
+                    <td class="px-6 py-4 text-sm text-gray-900">
+                      <span x-text="user.branches.length > 0 ? user.branches.join(', ') : 'None'"></span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Error/Success Messages -->
+        <div x-show="message" class="mt-4 p-4 rounded-lg" :class="isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
+          <span x-text="message"></span>
+        </div>
+      </div>
+    </template>
+  </main>
+
+  <!-- AlpineJS Component -->
+  <script>
+    function userAccess() {
+      return {
+        users: [],
+        branches: [],
+        selectedUserId: '',
+        selectedBranches: [],
+        message: '',
+        isError: false,
+
+        init() {
+          this.fetchData();
+        },
+
+        fetchData() {
+          fetch('/api/manage-user-access/')
+            .then(response => response.json())
+            .then(data => {
+              this.users = data.users;
+              this.branches = data.branches;
+            })
+            .catch(error => {
+              console.error('Error fetching user access data:', error);
+              this.message = 'Failed to load data';
+              this.isError = true;
+            });
+        },
+
+        fetchUserAccess() {
+          if (!this.selectedUserId) {
+            this.selectedBranches = [];
+            return;
+          }
+          const user = this.users.find(u => u.id == this.selectedUserId);
+          if (user) {
+            this.selectedBranches = user.branches;
+          }
+        },
+
+        updateUserAccess() {
+          this.message = '';
+          this.isError = false;
+
+          fetch('/api/manage-user-access/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: parseInt(this.selectedUserId),
+              branches: this.selectedBranches
+            })
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data.error) {
+                this.message = data.error;
+                this.isError = true;
+              } else {
+                this.message = data.message;
+                this.isError = false;
+                // Update the users array to reflect the new access
+                const user = this.users.find(u => u.id == this.selectedUserId);
+                if (user) {
+                  user.branches = [...this.selectedBranches];
+                }
+              }
+            })
+            .catch(error => {
+              console.error('Error updating user access:', error);
+              this.message = 'Failed to update access';
+              this.isError = true;
+            });
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+{
+    "branches": [
+      {
+        "branchname": "Jhapa",
+        "servers": [
+          {
+            "servername": "JHP-Server-1",
+            "ip": "10.0.9.100",
+            "cpu_usage": "70%",
+            "ram_usage": "80%",
+            "latency": "30ms",
+            "bandwidth": "400Mbps",
+            "devices": [
+              {
+                "devicename": "JHP-Router-1",
+                "ip": "10.0.9.1",
+                "type": "router"
+              },
+              {
+                "devicename": "JHP-Switch-1",
+                "ip": "10.0.9.2",
+                "type": "switch"
+              },
+              {
+                "devicename": "JHP-Switch-2",
+                "ip": "10.0.9.3",
+                "type": "switch"
+              },
+              {
+                "devicename": "JHP-AccessPoint-1",
+                "ip": "10.0.9.4",
+                "type": "access_point"
+              },
+              {
+                "devicename": "JHP-AccessPoint-2",
+                "ip": "10.0.9.5",
+                "type": "access_point"
+              },
+              {
+                "devicename": "JHP-Firewall-1",
+                "ip": "10.0.9.6",
+                "type": "firewall"
+              },
+              {
+                "devicename": "JHP-Server-2",
+                "ip": "10.0.9.7",
+                "type": "server"
+              },
+              {
+                "devicename": "JHP-LoadBalancer-1",
+                "ip": "10.0.9.8",
+                "type": "load_balancer"
+              },
+              {
+                "devicename": "JHP-WirelessRouter-1",
+                "ip": "10.0.9.9",
+                "type": "wireless_router"
+              },
+              {
+                "devicename": "JHP-Printer-1",
+                "ip": "10.0.9.10",
+                "type": "printer"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "branchname": "Kathmandu",
+        "servers": [
+          {
+            "servername": "KTM-Server-1",
+            "devices": [
+              {
+                "devicename": "KTM-AccessPoint-3",
+                "ip": "10.0.1.5",
+                "type": "access_point"
+              },
+              {
+                "devicename": "KTM-Switch-2",
+                "ip": "10.0.1.6",
+                "type": "switch"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+}

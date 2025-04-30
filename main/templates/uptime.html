@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" x-data="uptimeDashboard()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Server Uptime Graph</title>
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- AlpineJS -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .glow-hover {
+      transition: all 0.3s ease;
+    }
+    .glow-hover:hover {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+
+  <!-- Navbar -->
+  <nav class="header-gradient text-white shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <i class="fas fa-network-wired text-3xl"></i>
+          <h1 class="text-2xl font-extrabold tracking-tight">NetPulse Admin Panel</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+          <div class="text-sm font-medium">
+            <i class="fas fa-user-shield mr-2"></i>
+            <!-- <span>{{ admin_email }}</span> -->
+          </div>
+          <a href="/" class="glow-hover">Home</a>
+          <a href="/cards" class="glow-hover">Topology & Graph</a>
+          <a href="/access" class="glow-hover">Access Management</a>
+          <a href="/notify" class="glow-hover">Notify Me</a>
+          <a href="#" class="glow-hover">Uptime Graph</a>
+          <a href="/logout" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg glow-hover transition flex items-center">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Section -->
+  <main class="max-w-7xl mx-auto px-4 py-12">
+    <section class="text-center mb-10">
+      <h2 class="text-4xl font-bold text-blue-700 mb-2">Server Uptime Graph</h2>
+      <p class="text-gray-600">Select branch and duration to monitor server uptime trends</p>
+    </section>
+
+    <div class="flex justify-between mb-6">
+      <select x-model="selectedBranch" @change="loadUptimeData"
+              class="px-4 py-2 rounded-lg border border-gray-300 shadow-sm">
+        <option value="all">All Branches</option>
+        <template x-for="branch in branches" :key="branch">
+          <option x-text="branch" :value="branch"></option>
+        </template>
+      </select>
+
+      <select x-model="selectedRange" @change="loadUptimeData"
+              class="px-4 py-2 rounded-lg border border-gray-300 shadow-sm">
+        <option value="7d">Last 7 Days</option>
+        <option value="30d">Last 30 Days</option>
+      </select>
+    </div>
+
+    <div class="bg-white shadow-lg rounded-xl p-6">
+      <canvas id="uptimeChart" class="w-full h-96"></canvas>
+    </div>
+  </main>
+
+  <!-- Alpine Component -->
+  <script>
+    function uptimeDashboard() {
+      return {
+        selectedRange: '7d',
+        selectedBranch: 'all',
+        chart: null,
+        branches: [],
+
+        async loadUptimeData() {
+          const url = `/api/uptime/${this.selectedRange}?branch=${this.selectedBranch}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          this.branches = data.branches;
+          const uptime = data.uptime;
+
+          // Sort by average uptime (low to high)
+          const sortedEntries = Object.entries(uptime).sort((a, b) => {
+            const avgA = a[1].reduce((sum, val) => sum + val, 0) / a[1].length;
+            const avgB = b[1].reduce((sum, val) => sum + val, 0) / b[1].length;
+            return avgA - avgB;
+          });
+
+          const labels = sortedEntries[0]?.[1].map((_, i) => `Day ${i + 1}`) || [];
+          const datasets = sortedEntries.map(([server, values], index) => ({
+            label: server,
+            data: values,
+            borderColor: `hsl(${index * 45}, 70%, 50%)`,
+            fill: false,
+            tension: 0.3
+          }));
+
+          if (this.chart) this.chart.destroy();
+
+          const ctx = document.getElementById('uptimeChart').getContext('2d');
+          this.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+              responsive: true,
+              plugins: {
+                title: {
+                  display: true,
+                  text: `Uptime - ${this.selectedBranch === 'all' ? 'All Branches' : this.selectedBranch}`
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  title: { display: true, text: 'Uptime (%)' }
+                }
+              }
+            }
+          });
+        },
+
+        init() {
+          this.loadUptimeData();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

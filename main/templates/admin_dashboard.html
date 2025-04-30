@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en" x-data="dashboard()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Monitoring - Admin Control Center</title>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+  <!-- AlpineJS for interactivity -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .glow-hover {
+      transition: all 0.3s ease;
+    }
+    .glow-hover:hover {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+    .border-animated {
+      position: relative;
+      overflow: hidden;
+    }
+    .border-animated::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+      animation: slideBorder 3s infinite;
+    }
+    @keyframes slideBorder {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen font-sans antialiased text-gray-900">
+
+  <!-- Navbar -->
+  <nav class="header-gradient text-white shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <i class="fas fa-network-wired text-3xl"></i>
+          <h1 class="text-2xl font-extrabold tracking-tight">NetPulse Admin Panel</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+          <div class="text-sm font-medium">
+            <i class="fas fa-user-shield mr-2"></i>
+            <!-- <span>{{ admin_email }}</span> -->
+          </div>
+          <a href="#" class="glow-hover">Home</a>
+          <a href="/cards" class="glow-hover">Topology & Graph</a>
+          <a href="/access" class="glow-hover">Access Management</a>
+          <a href="/notify" class="glow-hover">Notify Me</a>
+          <a href="/uptime" class="glow-hover">Uptime Graph</a>
+          <a href="/logout" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg glow-hover transition flex items-center">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">
+        Admin Control Center
+      </h2>
+      <p class="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+        Manage network access and monitor performance with full administrative control.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="overview">
+
+
+    <!-- Modal Structure -->
+    <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-center items-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+      <div class="bg-white rounded-2xl shadow-xl p-8 transform scale-95 transition-transform duration-300 ease-in-out">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-semibold text-gray-900">Network Update Modal</h3>
+          <button id="closeModalButton" class="text-gray-600 hover:text-gray-900 focus:outline-none">
+            <i class="fas fa-times text-2xl"></i>
+          </button>
+        </div>
+      
+        <p class="text-gray-700 mb-6">The network data in this system can be updated here. Please select a file and click "Update System" to proceed.</p>
+      
+        <form id="jsonUploadForm" class="space-y-6">
+          <div>
+            <label for="jsonFile" class="block text-sm font-medium text-gray-700 mb-2">Choose the Update File</label>
+            <input type="file" id="jsonFile" accept=".json" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-500 transition duration-300 ease-in-out">
+          </div>
+        
+          <div class="flex justify-end">
+            <button type="submit" id="uploadButton" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition duration-300 ease-in-out flex items-center opacity-50 cursor-not-allowed" disabled>
+              <i class="fas fa-upload mr-2"></i> Update System
+            </button>
+          </div>
+        </form>
+      
+        <div id="statusMessage" class="mt-4 p-4 rounded-lg" style="display: none;">
+          <span id="message"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+      const openModalButton = document.getElementById("openModalButton");
+      const closeModalButton = document.getElementById("closeModalButton");
+      const modal = document.getElementById("modal");
+      
+      // Show Modal when button is clicked
+      openModalButton.addEventListener("click", function() {
+        modal.classList.remove("opacity-0", "pointer-events-none");
+        modal.classList.add("opacity-100", "pointer-events-auto");
+        modal.querySelector(".bg-white").classList.add("scale-100");
+      });
+    
+      // Close Modal when the close button is clicked
+      closeModalButton.addEventListener("click", function() {
+        modal.classList.remove("opacity-100", "pointer-events-auto");
+        modal.classList.add("opacity-0", "pointer-events-none");
+        modal.querySelector(".bg-white").classList.remove("scale-100");
+        modal.querySelector(".bg-white").classList.add("scale-95");
+      });
+    
+      // Prevent modal from closing when clicking inside the modal content
+      modal.querySelector(".bg-white").addEventListener("click", function(event) {
+        event.stopPropagation();
+      });
+    
+      // Close modal when clicking outside of the modal content
+      modal.addEventListener("click", function() {
+        modal.classList.remove("opacity-100", "pointer-events-auto");
+        modal.classList.add("opacity-0", "pointer-events-none");
+        modal.querySelector(".bg-white").classList.remove("scale-100");
+        modal.querySelector(".bg-white").classList.add("scale-95");
+      });
+    
+      // JavaScript for handling file upload
+      const jsonFileInput = document.getElementById("jsonFile");
+      const uploadButton = document.getElementById("uploadButton");
+      const statusMessage = document.getElementById("statusMessage");
+      const messageElement = document.getElementById("message");
+      let file = null;
+    
+      // Handle file selection
+      jsonFileInput.addEventListener("change", function(event) {
+        const selectedFile = event.target.files[0];
+        if (selectedFile && selectedFile.type === "application/json") {
+          file = selectedFile;
+          messageElement.textContent = "";
+          statusMessage.style.display = "none";
+          uploadButton.disabled = false;
+          uploadButton.classList.remove("opacity-50", "cursor-not-allowed");
+        } else {
+          file = null;
+          messageElement.textContent = "Please select a valid JSON file.";
+          statusMessage.style.display = "block";
+          statusMessage.classList.remove("bg-green-100", "text-green-700");
+          statusMessage.classList.add("bg-red-100", "text-red-700");
+          uploadButton.disabled = true;
+          uploadButton.classList.add("opacity-50", "cursor-not-allowed");
+        }
+      });
+    
+      // Handle form submission
+      document.getElementById("jsonUploadForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+      
+        if (!file) {
+          messageElement.textContent = "No file selected.";
+          statusMessage.style.display = "block";
+          statusMessage.classList.remove("bg-green-100", "text-green-700");
+          statusMessage.classList.add("bg-red-100", "text-red-700");
+          return;
+        }
+      
+        const formData = new FormData();
+        formData.append("jsonFile", file);
+      
+        fetch("/update_network_data/", {
+          method: "POST",
+          body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            messageElement.textContent = data.error;
+            statusMessage.style.display = "block";
+            statusMessage.classList.remove("bg-green-100", "text-green-700");
+            statusMessage.classList.add("bg-red-100", "text-red-700");
+          } else {
+            messageElement.textContent = data.message;
+            statusMessage.style.display = "block";
+            statusMessage.classList.remove("bg-red-100", "text-red-700");
+            statusMessage.classList.add("bg-green-100", "text-green-700");
+          }
+        })
+        .catch(error => {
+          console.error("Error uploading JSON:", error);
+          messageElement.textContent = "Failed to upload the file.";
+          statusMessage.style.display = "block";
+          statusMessage.classList.remove("bg-green-100", "text-green-700");
+          statusMessage.classList.add("bg-red-100", "text-red-700");
+        });
+      });
+    });
+
+    </script>
+
+
+    <!-- Network Data Table Section -->
+    <section class="mb-12 border-animated" x-data="networkTable()">
+      <div class="bg-white rounded-2xl shadow-lg p-6 glow-hover">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center space-x-3">
+            <i class="fas fa-table text-blue-600 text-2xl"></i>
+            <h3 class="text-3xl font-bold text-gray-900">Network Data Overview</h3>
+          </div>
+          <div class="flex space-x-4">
+            <button @click="openAddModal" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg glow-hover flex items-center">
+              <i class="fas fa-plus mr-2"></i> Add New Entry
+            </button>
+            <button id="openModalButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg glow-hover flex items-center">
+              <i class="fas fa-sync-alt mr-2"></i> Update System Network
+            </button>
+          </div>
+        </div>
+        
+      
+        <!-- Search and Filter -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+          <div class="relative w-full sm:w-64">
+            <input type="text" placeholder="Search by branch, server, or device..." 
+                   x-model="search" 
+                   @input.debounce="filterData"
+                   class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <select x-model="sortBy" 
+                  @change="sortData"
+                  class="w-full sm:w-48 pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            <option value="branchname">Sort by Branch</option>
+            <option value="servername">Sort by Server</option>
+            <option value="cpu_usage">Sort by CPU Usage</option>
+            <option value="ram_usage">Sort by RAM Usage</option>
+          </select>
+        </div>
+      
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('branchname')">Branch</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('servername')">Server</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('ip')">Server IP</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('cpu_usage')">CPU Usage</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('ram_usage')">RAM Usage</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('latency')">Latency</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer" @click="toggleSort('bandwidth')">Bandwidth</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Devices</th>
+                <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in filteredRows" :key="row.id">
+                <tr class="border-t hover:bg-gray-50">
+                  <td class="px-6 py-4 text-sm text-gray-900" x-text="row.branchname"></td>
+                  <td class="px-6 py-4 text-sm text-gray-900" x-text="row.servername"></td>
+                  <td class="px-6 py-4 text-sm text-gray-900" x-text="row.ip"></td>
+                  <td class="px-6 py-4 text-sm text-blue-600" x-text="row.cpu_usage"></td>
+                  <td class="px-6 py-4 text-sm text-blue-600" x-text="row.ram_usage"></td>
+                  <td class="px-6 py-4 text-sm text-blue-600" x-text="row.latency"></td>
+                  <td class="px-6 py-4 text-sm text-blue-600" x-text="row.bandwidth"></td>
+                  <td class="px-6 py-4 text-sm text-gray-900">
+                    <span x-text="row.devices && row.devices.length > 0 ? row.devices.map(d => `${d.devicename} (${d.type})`).join(', ') : 'None'"></span>
+                  </td>
+                  <td class="px-6 py-4 text-sm">
+                    <button @click="openEditModal(row)" class="text-blue-600 hover:text-blue-800 mr-4">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button @click="deleteRow(row)" class="text-red-600 hover:text-red-800">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      
+        <!-- Error/Success Messages -->
+        <div x-show="message" class="mt-4 p-4 rounded-lg" :class="isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
+          <span x-text="message"></span>
+        </div>
+      </div>
+    
+      <!-- Add Modal -->
+      <div x-show="showAddModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 md:w-1/2">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="text-xl font-semibold text-gray-900">Add New Entry</h4>
+            <button @click="closeAddModal" class="text-gray-500 hover:text-gray-800">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Entry Type</label>
+            <select x-model="addForm.type" @change="resetAddForm" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+              <option value="branch">Select an Option</option>
+              <option value="server">Server</option>
+              <option value="device">Device</option>
+            </select>
+          </div>
+          <div x-show="addForm.type === 'branch'">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
+              <input x-model="addForm.branchname" type="text" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            </div>
+          </div>
+          <div x-show="addForm.type === 'server' || addForm.type === 'device'">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+              <select x-model="addForm.branchname" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+                <option value="">Select a branch...</option>
+                <template x-for="branch in branches" :key="branch.branchname">
+                  <option :value="branch.branchname" x-text="branch.branchname"></option>
+                </template>
+              </select>
+            </div>
+          </div>
+          <div x-show="addForm.type === 'server'">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Server Name</label>
+              <input x-model="addForm.servername" type="text" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
+              <input x-model="addForm.ip" type="text" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            </div>
+          </div>
+          <div x-show="addForm.type === 'device'">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Server</label>
+              <select x-model="addForm.servername" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+                <option value="">Select a server...</option>
+                <template x-for="server in getServersForBranch(addForm.branchname)" :key="server.servername">
+                  <option :value="server.servername" x-text="server.servername"></option>
+                </template>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Device Name</label>
+              <input x-model="addForm.devicename" type="text" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Device Type</label>
+              <select x-model="addForm.deviceType" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+                <option value="router">Router</option>
+                <option value="switch">Switch</option>
+                <option value="access_point">Access Point</option>
+                <option value="firewall">Firewall</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button @click="addEntry" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg glow-hover flex items-center">
+              <i class="fas fa-save mr-2"></i> Add
+            </button>
+          </div>
+        </div>
+      </div>
+    
+      <!-- Edit Modal -->
+      <div x-show="showEditModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 md:w-1/2">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="text-xl font-semibold text-gray-900">Edit Server</h4>
+            <button @click="closeEditModal" class="text-gray-500 hover:text-gray-800">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Branch Name</label>
+            <input x-model="editForm.branchname" type="text" disabled class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none bg-gray-100 glow-hover">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Server Name</label>
+            <input x-model="editForm.servername" type="text" disabled class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none bg-gray-100 glow-hover">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
+            <input x-model="editForm.ip" type="text" class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Devices</label>
+            <div class="space-y-2">
+              <template x-for="(device, index) in editForm.devices" :key="index">
+                <div class="flex items-center space-x-2">
+                  <input x-model="editForm.devices[index].devicename" type="text" placeholder="Device Name" class="flex-1 pl-4 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+                  <select x-model="editForm.devices[index].type" class="pl-4 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+                    <option value="router">Router</option>
+                    <option value="switch">Switch</option>
+                    <option value="access_point">Access Point</option>
+                    <option value="firewall">Firewall</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <button @click="editForm.devices.splice(index, 1)" class="text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </template>
+              <button @click="editForm.devices.push({ devicename: '', type: 'router' })" class="text-blue-600 hover:text-blue-800 text-sm">
+                <i class="fas fa-plus mr-1"></i> Add Device
+              </button>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <button @click="updateEntry" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg glow-hover flex items-center">
+              <i class="fas fa-save mr-2"></i> Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AlpineJS Component for Network Table -->
+    <script>
+      function networkTable() {
+        return {
+          branches: {{ branches|safe }},
+          search: '',
+          sortBy: 'branchname',
+          sortDirection: 'asc',
+          rows: [],
+          filteredRows: [],
+          showAddModal: false,
+          showEditModal: false,
+          message: '',
+          isError: false,
+          addForm: {
+            type: 'branch',
+            branchname: '',
+            servername: '',
+            ip: '',
+            devicename: '',
+            deviceType: 'router'
+          },
+          editForm: {
+            branchname: '',
+            servername: '',
+            ip: '',
+            devices: []
+          },
+        
+          init() {
+            this.fetchNetworkData();
+            this.pollingInterval = setInterval(() => {
+              this.fetchNetworkData();
+            }, 2000);
+          },
+        
+          fetchNetworkData() {
+            fetch('/api/network-data/')
+              .then(response => response.json())
+              .then(data => {
+                this.branches = data.branches || [];
+                this.prepareRows();
+              })
+              .catch(error => {
+                console.error('Error fetching network data:', error);
+                this.message = 'Failed to fetch network data';
+                this.isError = true;
+              });
+          },
+        
+          prepareRows() {
+            this.rows = [];
+            this.branches.forEach(branch => {
+              branch.servers.forEach(server => {
+                this.rows.push({
+                  id: `${branch.branchname}-${server.servername}`,
+                  branchname: branch.branchname,
+                  servername: server.servername,
+                  ip: server.ip,
+                  cpu_usage: server.cpu_usage,
+                  ram_usage: server.ram_usage,
+                  latency: server.latency,
+                  bandwidth: server.bandwidth,
+                  devices: server.devices || []
+                });
+              });
+            });
+            this.filterData();
+          },
+        
+          filterData() {
+            const searchTerm = this.search.toLowerCase().trim();
+            if (!searchTerm) {
+              this.filteredRows = [...this.rows];
+            } else {
+              this.filteredRows = this.rows.filter(row => {
+                const deviceString = row.devices && row.devices.length > 0 
+                  ? row.devices.map(d => `${d.devicename} ${d.type}`).join(' ').toLowerCase()
+                  : '';
+                return (
+                  row.branchname.toLowerCase().includes(searchTerm) ||
+                  row.servername.toLowerCase().includes(searchTerm) ||
+                  row.ip.toLowerCase().includes(searchTerm) ||
+                  row.cpu_usage.toLowerCase().includes(searchTerm) ||
+                  row.ram_usage.toLowerCase().includes(searchTerm) ||
+                  row.latency.toLowerCase().includes(searchTerm) ||
+                  row.bandwidth.toLowerCase().includes(searchTerm) ||
+                  deviceString.includes(searchTerm)
+                );
+              });
+            }
+            this.sortData();
+          },
+        
+          sortData() {
+            this.filteredRows.sort((a, b) => {
+              let valueA = a[this.sortBy];
+              let valueB = b[this.sortBy];
+            
+              if (['cpu_usage', 'ram_usage', 'latency', 'bandwidth'].includes(this.sortBy)) {
+                valueA = parseFloat(valueA) || 0;
+                valueB = parseFloat(valueB) || 0;
+              } else {
+                valueA = valueA.toString().toLowerCase();
+                valueB = valueB.toString().toLowerCase();
+              }
+            
+              if (valueA < valueB) return this.sortDirection === 'asc' ? -1 : 1;
+              if (valueA > valueB) return this.sortDirection === 'asc' ? 1 : -1;
+              return 0;
+            });
+          },
+        
+          toggleSort(field) {
+            if (this.sortBy === field) {
+              this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+              this.sortBy = field;
+              this.sortDirection = 'asc';
+            }
+            this.sortData();
+          },
+        
+          openAddModal() {
+            this.showAddModal = true;
+            this.resetAddForm();
+          },
+        
+          closeAddModal() {
+            this.showAddModal = false;
+            this.message = '';
+            this.isError = false;
+          },
+        
+          resetAddForm() {
+            this.addForm = {
+              type: this.addForm.type,
+              branchname: '',
+              servername: '',
+              ip: '',
+              devicename: '',
+              deviceType: 'router'
+            };
+          },
+        
+          addEntry() {
+            this.message = '';
+            this.isError = false;
+          
+            // Basic validation
+            if (this.addForm.type === 'branch' && !this.addForm.branchname) {
+              this.message = 'Branch name is required';
+              this.isError = true;
+              return;
+            }
+            if (this.addForm.type === 'server' && (!this.addForm.branchname || !this.addForm.servername || !this.addForm.ip)) {
+              this.message = 'Branch, server name, and IP are required';
+              this.isError = true;
+              return;
+            }
+            if (this.addForm.type === 'device' && (!this.addForm.branchname || !this.addForm.servername || !this.addForm.devicename)) {
+              this.message = 'Branch, server, and device name are required';
+              this.isError = true;
+              return;
+            }
+          
+            const payload = {
+              action: 'add',
+              type: this.addForm.type
+            };
+            if (this.addForm.type === 'branch') {
+              payload.branchname = this.addForm.branchname;
+            } else if (this.addForm.type === 'server') {
+              Object.assign(payload, {
+                branchname: this.addForm.branchname,
+                servername: this.addForm.servername,
+                ip: this.addForm.ip,
+                cpu_usage: '0%', // Hardcoded default
+                ram_usage: '0%', // Hardcoded default
+                latency: '0ms',  // Hardcoded default
+                bandwidth: '0Mbps' // Hardcoded default
+              });
+            } else if (this.addForm.type === 'device') {
+              Object.assign(payload, {
+                branchname: this.addForm.branchname,
+                servername: this.addForm.servername,
+                devicename: this.addForm.devicename,
+                type: this.addForm.deviceType
+              });
+            }
+          
+            fetch('/api/network-data/manage/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            })
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.message = data.error;
+                  this.isError = true;
+                } else {
+                  this.message = data.message;
+                  this.isError = false;
+                  this.fetchNetworkData();
+                  this.closeAddModal();
+                }
+              })
+              .catch(error => {
+                console.error('Error adding entry:', error);
+                this.message = 'Failed to add entry';
+                this.isError = true;
+              });
+          },
+        
+          openEditModal(row) {
+            this.editForm = {
+              branchname: row.branchname,
+              servername: row.servername,
+              ip: row.ip,
+              devices: row.devices ? [...row.devices] : []
+            };
+            this.showEditModal = true;
+            this.message = '';
+            this.isError = false;
+          },
+        
+          closeEditModal() {
+            this.showEditModal = false;
+            this.message = '';
+            this.isError = false;
+          },
+        
+          updateEntry() {
+            this.message = '';
+            this.isError = false;
+          
+            // Basic validation
+            if (!this.editForm.ip) {
+              this.message = 'IP address is required';
+              this.isError = true;
+              return;
+            }
+          
+            fetch('/api/network-data/manage/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                action: 'edit',
+                branchname: this.editForm.branchname,
+                servername: this.editForm.servername,
+                ip: this.editForm.ip,
+                devices: this.editForm.devices
+              })
+            })
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.message = data.error;
+                  this.isError = true;
+                } else {
+                  this.message = data.message;
+                  this.isError = false;
+                  this.fetchNetworkData();
+                  this.closeEditModal();
+                }
+              })
+              .catch(error => {
+                console.error('Error updating entry:', error);
+                this.message = 'Failed to update entry';
+                this.isError = true;
+              });
+          },
+        
+          deleteRow(row) {
+            if (!confirm(`Are you sure you want to delete server ${row.servername} from branch ${row.branchname}?`)) {
+              return;
+            }
+          
+            this.message = '';
+            this.isError = false;
+          
+            fetch('/api/network-data/manage/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                action: 'delete',
+                branchname: row.branchname,
+                servername: row.servername
+              })
+            })
+              .then(response => response.json())
+              .then(data => {
+                if (data.error) {
+                  this.message = data.error;
+                  this.isError = true;
+                } else {
+                  this.message = data.message;
+                  this.isError = false;
+                  this.fetchNetworkData();
+                }
+              })
+              .catch(error => {
+                console.error('Error deleting entry:', error);
+                this.message = 'Failed to delete entry';
+                this.isError = true;
+              });
+          },
+        
+          getServersForBranch(branchname) {
+            const branch = this.branches.find(b => b.branchname === branchname);
+            return branch ? branch.servers : [];
+          },
+        
+          $destroy() {
+            if (this.pollingInterval) {
+              clearInterval(this.pollingInterval);
+            }
+          }
+        }
+      }
+    </script>
+
+</body>
+</html>

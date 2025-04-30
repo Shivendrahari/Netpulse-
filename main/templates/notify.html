@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" x-data="notificationScheduler()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Notification - Admin Control Center</title>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+  <!-- AlpineJS for interactivity -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .glow-hover {
+      transition: all 0.3s ease;
+    }
+    .glow-hover:hover {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen font-sans antialiased text-gray-900">
+
+  <!-- Navbar -->
+  <nav class="header-gradient text-white shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <i class="fas fa-network-wired text-3xl"></i>
+          <h1 class="text-2xl font-extrabold tracking-tight">NetPulse Admin Panel</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+            <a href="/" class="glow-hover">Home</a>
+            <a href="/cards" class="glow-hover">Topology & Graph</a>
+            <a href="/access" class="glow-hover">Access Management</a>
+            <a href="#" class="glow-hover">Notify Me</a>
+            <a href="/uptime" class="glow-hover">Uptime Graph</a>
+            <a href="/logout" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg glow-hover transition flex items-center">
+              <i class="fas fa-sign-out-alt mr-2"></i> Logout
+            </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="py-16 text-center">
+    <div class="max-w-4xl mx-auto px-4">
+      <h2 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">
+        Notification Scheduler
+      </h2>
+      <p class="mt-4 text-xl text-gray-600">
+        Set up periodic email notifications to monitor your network infrastructure.
+      </p>
+    </div>
+  </section>
+
+  <!-- Scheduler Form -->
+  <main class="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-8 glow-hover">
+    <div class="mb-8">
+      <h3 class="text-2xl font-semibold text-gray-800 flex items-center mb-2">
+        <i class="fas fa-envelope text-blue-600 mr-2"></i> Schedule Notification Email
+      </h3>
+      <p class="text-gray-500 text-sm">Enter the recipient's email and how often they should receive the report.</p>
+    </div>
+
+    <form @submit.prevent="scheduleEmail">
+      <div class="mb-6">
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+        <input type="email" id="email" x-model="email" required
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none glow-hover"/>
+      </div>
+
+      <div class="mb-6">
+        <label for="interval" class="block text-sm font-medium text-gray-700 mb-1">Time Interval (in hours)</label>
+        <input type="number" min="1" id="interval" x-model="interval" required
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none glow-hover"/>
+      </div>
+
+      <button type="submit"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg font-semibold glow-hover flex items-center justify-center">
+        <i class="fas fa-paper-plane mr-2"></i> Schedule Notification
+      </button>
+    </form>
+
+    <!-- Success Popup -->
+    <div x-show="showSuccess" x-transition.duration.400ms
+         class="mt-6 bg-green-100 text-green-800 px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+      <i class="fas fa-check-circle"></i>
+      <span x-text="successMessage"></span>
+    </div>
+
+    <!-- Error Message -->
+    <div x-show="showError" x-transition.duration.400ms
+         class="mt-6 bg-red-100 text-red-800 px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span x-text="errorMessage"></span>
+    </div>
+  </main>
+
+  <!-- AlpineJS Component -->
+  <script>
+    function notificationScheduler() {
+      return {
+        email: '',
+        interval: '',
+        showSuccess: false,
+        showError: false,
+        successMessage: '',
+        errorMessage: '',
+
+        scheduleEmail() {
+          this.showSuccess = false;
+          this.showError = false;
+
+          fetch('/api/schedule-email/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: this.email,
+              time_interval: this.interval
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === "success") {
+              this.successMessage = data.message;
+              this.showSuccess = true;
+              this.email = '';
+              this.interval = '';
+            } else {
+              this.errorMessage = data.message || "Something went wrong!";
+              this.showError = true;
+            }
+          })
+          .catch(error => {
+            this.errorMessage = "Network error. Please try again.";
+            this.showError = true;
+          });
+        }
+      }
+    }
+  </script>
+</body>
+</html>

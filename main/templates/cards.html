@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" x-data="dashboard()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Monitoring - Admin Control Center</title>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+  <!-- AlpineJS for interactivity -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    .glow-hover {
+      transition: all 0.3s ease;
+    }
+    .glow-hover:hover {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px);
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+    .border-animated {
+      position: relative;
+      overflow: hidden;
+    }
+    .border-animated::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+      animation: slideBorder 3s infinite;
+    }
+    @keyframes slideBorder {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen font-sans antialiased text-gray-900">
+
+  <!-- Navbar -->
+  <nav class="header-gradient text-white shadow-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <i class="fas fa-network-wired text-3xl"></i>
+          <h1 class="text-2xl font-extrabold tracking-tight">NetPulse Admin Panel</h1>
+        </div>
+        <div class="flex items-center space-x-6">
+          <div class="text-sm font-medium">
+            <i class="fas fa-user-shield mr-2"></i>
+            <!-- <span>{{ admin_email }}</span> -->
+          </div>
+          <a href="/" class="glow-hover">Home</a>
+          <a href="#" class="glow-hover">Topology & Graph</a>
+          <a href="/access" class="glow-hover">Access Management</a>
+          <a href="/nofify" class="glow-hover">Notify Me</a>
+          <a href="/uptime" class="glow-hover">Uptime Graph</a>
+          <a href="/logout" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg glow-hover transition flex items-center">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">
+        Admin Control Center
+      </h2>
+      <p class="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+        Manage network access and monitor performance with full administrative control.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" id="overview">
+
+    <!-- Available Branches Section -->
+    <div class="flex justify-between items-center mb-10">
+      <h3 class="text-3xl font-bold text-gray-900">Available Branches</h3>
+      <div class="relative w-64">
+        <input type="text" placeholder="Search network..." 
+               x-model="search" 
+               class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white glow-hover">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+      </div>
+    </div>
+
+    <!-- Branch Sections -->
+    <template x-for="branch in filteredBranches" :key="branch.branchname">
+      <section x-data="{ open: false }" class="mb-12 border-animated">
+        <div class="bg-white rounded-2xl shadow-lg p-6 glow-hover">
+          <div class="flex justify-between items-center cursor-pointer" @click="open = !open">
+            <div class="flex items-center space-x-4">
+              <div class="bg-blue-100 p-3 rounded-full">
+                <i class="fas fa-building text-blue-600 text-xl"></i>
+              </div>
+              <div>
+                <h4 class="text-2xl font-semibold text-gray-900" x-text="branch.branchname"></h4>
+                <p class="text-sm text-gray-500">Active Servers: <span x-text="branch.servers.length"></span></p>
+              </div>
+            </div>
+            <button class="bg-blue-600 text-white p-2 rounded-full glow-hover">
+              <i :class="open ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+            </button>
+          </div>
+
+          <!-- Servers -->
+          <div x-show="open" x-transition class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <template x-for="server in branch.servers" :key="server.servername">
+              <div x-data="{ openServer: false }" class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 glow-hover">
+                <div class="flex justify-between items-center cursor-pointer" @click="openServer = !openServer">
+                  <div class="flex items-center space-x-3">
+                    <i class="fas fa-server text-blue-600 text-lg"></i>
+                    <div>
+                      <h5 class="text-lg font-medium text-gray-900" x-text="server.servername"></h5>
+                      <p class="text-sm text-gray-500">IP: <span x-text="server.ip"></span></p>
+                    </div>
+                  </div>
+                  <i :class="openServer ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="text-gray-500"></i>
+                </div>
+
+                <!-- Server Details -->
+                <div x-show="openServer" x-transition class="mt-4 space-y-4">
+                  <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                      <span class="text-gray-600">CPU Usage</span>
+                      <div class="mt-1 text-blue-600 font-semibold" x-text="server.cpu_usage"></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                      <span class="text-gray-600">RAM Usage</span>
+                      <div class="mt-1 text-blue-600 font-semibold" x-text="server.ram_usage"></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                      <span class="text-gray-600">Latency</span>
+                      <div class="mt-1 text-blue-600 font-semibold" x-text="server.latency"></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg shadow-sm">
+                      <span class="text-gray-600">Bandwidth</span>
+                      <div class="mt-1 text-blue-600 font-semibold" x-text="server.bandwidth"></div>
+                    </div>                
+                  </div>
+
+                  <!-- Devices -->
+                  <template x-if="server.devices && server.devices.length > 0">
+                    <div>
+                      <h6 class="text-sm font-semibold text-gray-700 mb-3">Connected Devices</h6>
+                      <div class="space-y-3">
+                        <template x-for="device in server.devices" :key="device.devicename">
+                          <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm glow-hover">
+                            <div class="flex items-center space-x-3">
+                              <template x-if="device.type === 'router'">
+                                <i class="fas fa-wifi text-green-500"></i>
+                              </template>
+                              <template x-if="device.type === 'switch'">
+                                <i class="fas fa-network-wired text-blue-600"></i>
+                              </template>
+                              <template x-if="device.type === 'access_point'">
+                                <i class="fas fa-broadcast-tower text-purple-500"></i>
+                              </template>
+                              <template x-if="device.type === 'firewall'">
+                                <i class="fas fa-shield-alt text-red-500"></i>
+                              </template>
+                              <template x-if="['router', 'switch', 'access_point', 'firewall'].indexOf(device.type) === -1">
+                                <i class="fas fa-question-circle text-gray-500"></i>
+                              </template>
+                              <span class="text-gray-800 font-medium" x-text="device.devicename"></span>
+                            </div>
+                            <span class="text-sm text-gray-500" x-text="device.ip"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                  <template x-if="!server.devices || server.devices.length === 0">
+                    <p class="text-sm text-gray-400">No devices connected.</p>
+                  </template>
+
+                  <!-- View Network Button -->
+                  <div class="mt-4">
+                    <button @click="viewTopology(branch.branchname, server.servername)"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg glow-hover">
+                      <i class="fas fa-eye mr-2"></i> View Network Topology
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+    </template>
+  </main>
+
+  <!-- Modal to Display Topology Image -->
+  <div id="topologyModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-11/12 md:w-1/2">
+      <div class="flex justify-end">
+        <button @click="hideModal" class="text-gray-500 hover:text-gray-800">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <img id="topologyImage" src="" alt="Network Topology" class="w-full rounded-lg" />
+    </div>
+  </div>
+
+  <!-- AlpineJS Component -->
+  <script>
+    function dashboard() {
+      return {
+        search: '',
+        branches: {{ branches|safe }},
+        topologyUrl: "/plot-topology/",
+
+        init() {
+          // Start polling for network data every 2 seconds
+          this.fetchNetworkData();
+          this.pollingInterval = setInterval(() => {
+            this.fetchNetworkData();
+          }, 2000);
+        },
+
+        fetchNetworkData() {
+          fetch('/api/network-data/')
+            .then(response => response.json())
+            .then(data => {
+              this.branches = data.branches || [];
+            })
+            .catch(error => {
+              console.error('Error fetching network data:', error);
+            });
+        },
+
+        viewTopology(branchName, serverName) {
+          fetch(`${this.topologyUrl}?branch_name=${branchName}&server_name=${serverName}`)
+            .then(response => response.blob())
+            .then(imageBlob => {
+              const imageUrl = URL.createObjectURL(imageBlob);
+              this.showModal(imageUrl);
+            })
+            .catch(error => {
+              console.error("Error fetching topology image:", error);
+            });
+        },
+
+        showModal(imageUrl) {
+          const modal = document.getElementById('topologyModal');
+          const modalImage = document.getElementById('topologyImage');
+          modal.classList.remove('hidden');
+          modalImage.src = imageUrl;
+        },
+
+        hideModal() {
+          const modal = document.getElementById('topologyModal');
+          modal.classList.add('hidden');
+        },
+
+        get filteredBranches() {
+          if (!this.search.trim()) return this.branches;
+          return this.branches.filter(branch =>
+            branch.branchname.toLowerCase().includes(this.search.toLowerCase())
+          );
+        },
+
+        // Cleanup polling on component destroy
+        $destroy() {
+          if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
